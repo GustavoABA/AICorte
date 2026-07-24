@@ -1,6 +1,6 @@
 # AICorte
 
-Hub nativo para instalar, executar e manter aplicativos locais em Docker. O `AICorte.exe` usa WinForms com Microsoft Edge WebView2, sem janela de terminal, barra de endereco ou Chrome for Testing.
+Hub nativo para baixar, instalar, executar e manter ferramentas locais. O `AICorte.exe` usa WinForms com Microsoft Edge WebView2, sem janela de terminal, barra de endereco ou Chrome for Testing.
 
 ## Primeiro uso
 
@@ -16,12 +16,19 @@ O assistente instala, quando necessario, Git portatil, CPython 3.11, Docker CLI 
 ## Navegacao
 
 - **Inicio**: disco, memoria, GPU, atividade e runtimes.
-- **Explorar**: catalogo GitHub com download e instalacao Docker.
+- **Explorar**: catalogo GitHub com receitas Docker, pacotes Windows portateis e codigo-fonte gerenciado.
 - **Aplicativos**: somente ferramentas instaladas, com acesso, switch e remocao.
 - **Manutencao**: diagnostico, limpeza, backup, atualizacao, reparo e fila de operacoes.
 - **Configuracoes**: limites opcionais de apps simultaneos, RAM por container e armazenamento. `0` significa ilimitado.
 
-O catalogo inicial contem 59 itens em Explorar. Ollama, Open-LLM-VTuber, n8n, Open WebUI, Langflow, Memos e ntfy possuem receitas Docker verificadas. Os demais aparecem como itens de catalogo e recebem o link do GitHub quando a origem foi confirmada; somente receitas executaveis recebem o botao de download.
+O catalogo inicial contem 60 itens em Explorar e nenhum card fica com receita pendente:
+
+- 12 servicos com receita Docker executavel: Ollama, Open-LLM-VTuber, n8n, Open WebUI, Langflow, Memos, ntfy, QwenPaw, Open Notebook, Trek, ReClip e WhaTicket Community.
+- 6 pacotes oficiais portateis para Windows: SimpleX Chat CLI, Velero CLI, Mouzi, Superfile, HelixDB e Kilo CLI.
+- 40 projetos com download, validacao, atualizacao e remocao gerenciada do codigo-fonte oficial em `PROJETOS`.
+- Dory e Mac Sai ficam marcados como incompativeis porque seus projetos oficiais suportam somente macOS.
+
+Baixar codigo-fonte nao e apresentado como execucao pronta: projetos que exigem credenciais, provedores externos, compilacao especifica ou outro ambiente continuam indicando isso nos detalhes do card.
 
 ## Estrutura
 
@@ -31,6 +38,8 @@ O catalogo inicial contem 59 itens em Explorar. Ollama, Open-LLM-VTuber, n8n, Op
 |-- AI                 modelos de IA
 |-- app
 |   |-- downloads      pacotes baixados
+|   |-- installations  marcadores e launchers gerenciados
+|   |-- packages       aplicativos portateis extraidos
 |   |-- runtime        Python, Git, Docker e dados do Engine
 |   `-- tmp            arquivos temporarios
 |-- Principal

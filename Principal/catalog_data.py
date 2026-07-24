@@ -8,6 +8,8 @@ APP = BASE / "app"
 AI = BASE / "AI"
 STACKS = PRINCIPAL / "docker"
 COMPOSE = APP / "runtime" / "docker" / "docker-compose.exe"
+INSTALLS = APP / "installations"
+PACKAGES = APP / "packages"
 
 
 def _quoted(path):
@@ -31,13 +33,16 @@ def docker_tool(
     source_path="",
     build=False,
     startup_timeout=300,
+    secret_keys=(),
 ):
     stack = STACKS / tool_id
     compose_file = stack / "compose.yaml"
     marker = stack / ".installed"
+    env_file = PRINCIPAL / "state" / tool_id / ".env"
     prefix = (
         f"& '{_quoted(COMPOSE)}' --project-name {compose_project} "
-        f"--file '{_quoted(compose_file)}'"
+        + (f"--env-file '{_quoted(env_file)}' " if secret_keys else "")
+        + f"--file '{_quoted(compose_file)}'"
     )
     availability = "installed" if marker.is_file() else "available"
     return {
@@ -68,6 +73,8 @@ def docker_tool(
         "notes": notes,
         "startup_timeout": startup_timeout,
         "install_managed": True,
+        "install_kind": "docker",
+        "install_label": "Download",
         "detached": True,
         "docker_compose": str(compose_file),
         "docker_project": compose_project,
@@ -75,6 +82,8 @@ def docker_tool(
         "docker_build": bool(build),
         "docker_source_repo": source_repo,
         "docker_source_path": source_path,
+        "docker_env_file": str(env_file) if secret_keys else "",
+        "docker_secret_keys": list(secret_keys),
     }
 
 
@@ -89,6 +98,7 @@ def catalog_tool(
     platform="Windows / self-hosted",
     hardware="Consulte os requisitos oficiais do projeto antes de instalar.",
     notes="",
+    supported=True,
 ):
     banner = ""
     if repo:
@@ -96,16 +106,25 @@ def catalog_tool(
             "https://opengraph.githubassets.com/aicorte/"
             + repo.removeprefix("https://github.com/").removesuffix(".git")
         )
+    marker = INSTALLS / tool_id / ".installed"
+    target = PROJECTS / tool_id
+    installable = bool(repo) and supported
+    if marker.is_file():
+        availability = "installed"
+    elif installable:
+        availability = "available"
+    else:
+        availability = "blocked"
     return {
         "id": tool_id,
         "name": name,
         "category": category,
         "description": description,
         "repo": repo,
-        "project": "",
-        "path": "",
+        "project": tool_id,
+        "path": str(target) if installable else "",
         "runtime": runtime,
-        "availability": "catalog",
+        "availability": availability,
         "platform": platform,
         "banner": banner,
         "url": "",
@@ -114,9 +133,17 @@ def catalog_tool(
         "prepare": "",
         "stop": "",
         "hardware": hardware,
-        "notes": notes or "Item solicitado para o catálogo. A receita de instalação ainda não foi validada.",
+        "notes": notes or (
+            "O AICorte baixa e atualiza o codigo-fonte oficial em PROJETOS. "
+            "Dependencias, credenciais e servicos externos continuam sujeitos a documentacao oficial."
+        ),
         "startup_timeout": 0,
-        "install_managed": False,
+        "install_managed": installable,
+        "install_kind": "source" if installable else "unsupported",
+        "install_label": "Baixar código" if installable else "Incompatível",
+        "install_marker": str(marker),
+        "source_repo": repo + ("" if repo.endswith(".git") else ".git") if repo else "",
+        "source_path": str(target) if installable else "",
         "detached": False,
         "docker_compose": "",
         "docker_project": "",
@@ -125,6 +152,55 @@ def catalog_tool(
         "docker_source_repo": "",
         "docker_source_path": "",
     }
+
+
+def release_tool(
+    tool_id,
+    name,
+    category,
+    description,
+    *,
+    runtime,
+    repo,
+    asset_pattern,
+    executable_glob,
+    archive="raw",
+    hardware="Consulte os requisitos oficiais do projeto antes de instalar.",
+    notes="",
+):
+    tool = catalog_tool(
+        tool_id,
+        name,
+        category,
+        description,
+        runtime=runtime,
+        repo=repo,
+        hardware=hardware,
+        notes=notes,
+    )
+    package = PACKAGES / tool_id
+    launcher = INSTALLS / tool_id / "start.ps1"
+    tool.update(
+        {
+            "path": str(package),
+            "install_kind": "release",
+            "install_label": "Download",
+            "source_repo": "",
+            "source_path": "",
+            "release_repo": repo.removeprefix("https://github.com/").removesuffix(".git"),
+            "release_asset_pattern": asset_pattern,
+            "release_archive": archive,
+            "release_executable_glob": executable_glob,
+            "start": f"& '{_quoted(launcher)}'",
+            "prepare": (
+                f"if (-not (Test-Path '{_quoted(launcher)}')) "
+                "{ throw 'Launcher do pacote ausente; use Reparar' }"
+            ),
+            "stop": "",
+            "startup_timeout": 60,
+        }
+    )
+    return tool
 
 
 DOCKER_TOOLS = [
@@ -235,6 +311,87 @@ DOCKER_TOOLS = [
         compose_project="aicorte-ntfy",
         startup_timeout=300,
     ),
+    docker_tool(
+        "qwenpaw",
+        "QwenPaw",
+        "Agentes",
+        "Assistente pessoal de IA self-hosted com memoria, skills, automacoes e multiplos canais.",
+        repo="https://github.com/agentscope-ai/QwenPaw",
+        runtime="Docker / LLM",
+        url="http://127.0.0.1:8088",
+        hardware="8 GB de RAM; o provedor ou modelo de IA configurado pode exigir mais recursos.",
+        notes="Dados, segredos e backups persistem em Principal\\state\\qwenpaw.",
+        compose_project="aicorte-qwenpaw",
+        startup_timeout=600,
+    ),
+    docker_tool(
+        "open-notebook",
+        "Open Notebook",
+        "Conhecimento",
+        "Alternativa self-hosted ao NotebookLM para estudar PDFs, sites, videos e audios.",
+        repo="https://github.com/lfnovo/open-notebook",
+        runtime="Docker / RAG",
+        url="http://127.0.0.1:8502",
+        hardware="8 GB de RAM; extracao local pesada e modelos adicionais podem exigir GPU.",
+        notes="Banco e arquivos persistem em Principal\\state\\open-notebook; chaves locais sao geradas na instalacao.",
+        compose_project="aicorte-open-notebook",
+        secret_keys=("OPEN_NOTEBOOK_ENCRYPTION_KEY", "SURREAL_PASSWORD"),
+        startup_timeout=900,
+    ),
+    docker_tool(
+        "trek",
+        "Trek",
+        "Produtividade",
+        "Planejador colaborativo de viagens com mapas, orcamento, listas e recursos de IA.",
+        repo="https://github.com/liketrek/TREK",
+        runtime="Docker / mapas",
+        url="http://127.0.0.1:3001",
+        ready_url="http://127.0.0.1:3001/api/health",
+        hardware="2 GB de RAM para uso local comum.",
+        notes="Dados e uploads persistem em Principal\\state\\trek.",
+        compose_project="aicorte-trek",
+        startup_timeout=600,
+    ),
+    docker_tool(
+        "reclip",
+        "ReClip",
+        "Vídeo e mídia",
+        "Aplicação web local para baixar vídeo ou áudio de sites suportados.",
+        repo="https://github.com/averygan/reclip",
+        runtime="Docker / web",
+        url="http://127.0.0.1:8899",
+        hardware="2 GB de RAM; espaco em disco proporcional aos downloads.",
+        notes="Use somente com conteudo autorizado. Downloads persistem em Principal\\state\\reclip.",
+        compose_project="aicorte-reclip",
+        source_repo="https://github.com/averygan/reclip.git",
+        source_path=str(PROJECTS / "reclip"),
+        build=True,
+        startup_timeout=1200,
+    ),
+    docker_tool(
+        "whaticket-community",
+        "WhaTicket Community",
+        "Atendimento",
+        "Central local multiusuario para atender conversas do WhatsApp em filas e tickets.",
+        repo="https://github.com/canove/whaticket-community",
+        runtime="Docker / Node / MariaDB / Chromium",
+        url="http://127.0.0.1:3002",
+        hardware=(
+            "CPU x64 com virtualizacao e memoria suficiente para frontend, backend, Chromium e MariaDB. "
+            "O consumo cresce conforme o numero de sessoes e atendentes."
+        ),
+        notes=(
+            "Dados, anexos e autenticacao do WhatsApp persistem em Principal\\state\\whaticket-community. "
+            "Primeiro acesso: admin@whaticket.com / admin; altere a senha imediatamente. "
+            "A integracao usa um cliente nao oficial do WhatsApp e pode sofrer bloqueio pela plataforma."
+        ),
+        compose_project="aicorte-whaticket",
+        source_repo="https://github.com/canove/whaticket-community.git",
+        source_path=str(PROJECTS / "whaticket-community"),
+        build=True,
+        secret_keys=("MYSQL_ROOT_PASSWORD", "JWT_SECRET", "JWT_REFRESH_SECRET"),
+        startup_timeout=1800,
+    ),
 ]
 
 
@@ -257,8 +414,8 @@ CATALOG_ONLY_TOOLS = [
     catalog_tool(
         "reclip", "ReClip", "Vídeo e mídia",
         "Aplicação web para baixar vídeo ou áudio de YouTube, TikTok, Instagram e outros sites.",
-        runtime="Web / Docker",
-        notes="Use somente com conteúdo que você tem autorização para baixar. Receita ainda não validada.",
+        runtime="Web / Docker", repo="https://github.com/averygan/reclip",
+        notes="Use somente com conteúdo que você tem autorização para baixar.",
     ),
     catalog_tool(
         "snapotter", "SnapOtter", "Imagem e design",
@@ -268,7 +425,7 @@ CATALOG_ONLY_TOOLS = [
     catalog_tool(
         "compresso", "CompressO", "Vídeo e mídia",
         "Aplicativo desktop para compactação e processamento de imagens e vídeos.",
-        runtime="Desktop / FFmpeg",
+        runtime="Desktop / FFmpeg", repo="https://github.com/codeforreal1/compressO",
     ),
     catalog_tool(
         "modly", "Modly", "3D e design",
@@ -290,27 +447,27 @@ CATALOG_ONLY_TOOLS = [
     catalog_tool(
         "penecho", "PenEcho", "Produtividade",
         "Quadro colaborativo em que desenhos, equações e diagramas são usados como contexto para IA.",
-        runtime="Web / IA",
+        runtime="Web / IA", repo="https://github.com/penecho/penecho",
     ),
     catalog_tool(
         "qwenpaw", "QwenPaw", "Agentes",
         "Assistente pessoal de IA self-hosted com memória, skills, automações e múltiplos canais.",
-        runtime="LLM / self-hosted",
+        runtime="LLM / self-hosted", repo="https://github.com/agentscope-ai/QwenPaw",
     ),
     catalog_tool(
         "observer-ai", "Observer AI", "Agentes",
         "Plataforma de microagentes que observam tela, câmera ou áudio e executam ações.",
-        runtime="Python / visão / áudio",
+        runtime="Desktop / visão / áudio", repo="https://github.com/Roy3838/Observer",
     ),
     catalog_tool(
         "deerflow", "DeerFlow", "Agentes",
         "Plataforma de agentes e subagentes para pesquisa, programação e execução de tarefas complexas.",
-        runtime="Docker / LLM",
+        runtime="Docker / LLM", repo="https://github.com/bytedance/deer-flow",
     ),
     catalog_tool(
         "raven", "Raven", "Agentes",
         "Ambiente de agentes com memória persistente e melhoria baseada em execuções anteriores.",
-        runtime="Python / LLM",
+        runtime="Python / Node / LLM", repo="https://github.com/EverMind-AI/Raven",
     ),
     catalog_tool(
         "agentic-inbox", "Agentic Inbox", "Comunicação",
@@ -320,7 +477,7 @@ CATALOG_ONLY_TOOLS = [
     catalog_tool(
         "open-notebook", "Open Notebook", "Conhecimento",
         "Alternativa self-hosted ao NotebookLM para estudar PDFs, sites, vídeos e áudios.",
-        runtime="Docker / RAG",
+        runtime="Docker / RAG", repo="https://github.com/lfnovo/open-notebook",
     ),
     catalog_tool(
         "yuvomi", "Yuvomi", "Produtividade",
@@ -330,96 +487,104 @@ CATALOG_ONLY_TOOLS = [
     catalog_tool(
         "trek", "Trek", "Produtividade",
         "Planejador colaborativo de viagens com mapas, orçamento, listas e recursos de IA.",
-        runtime="Web / mapas",
+        runtime="Docker / mapas", repo="https://github.com/liketrek/TREK",
     ),
     catalog_tool(
         "seafile", "Seafile", "Armazenamento",
         "Plataforma self-hosted de armazenamento, sincronização e compartilhamento de arquivos.",
-        runtime="Docker / banco de dados",
+        runtime="Docker / banco de dados", repo="https://github.com/haiwen/seafile",
     ),
     catalog_tool(
         "instatic", "Instatic", "Web e conteúdo",
         "CMS self-hosted com editor visual, gerenciamento de conteúdo e publicação de sites.",
-        runtime="Web / CMS",
+        runtime="Docker / CMS", repo="https://github.com/CoreBunch/Instatic",
     ),
-    catalog_tool(
+    release_tool(
         "simplex-chat", "SimpleX Chat", "Comunicação",
         "Aplicativo de mensagens privado sem identificadores permanentes de usuário.",
-        runtime="Desktop / mobile",
+        runtime="Terminal / mensagens", repo="https://github.com/simplex-chat/simplex-chat",
+        asset_pattern=r"simplex-chat-windows-x86-64$", executable_glob="simplex-chat.exe",
+        notes="Cliente oficial de terminal para Windows. O aplicativo desktop usa instalador MSI separado.",
     ),
     catalog_tool(
         "adguard-home", "AdGuard Home", "Infraestrutura",
         "Servidor DNS que bloqueia anúncios, rastreadores e domínios indesejados em toda a rede.",
-        runtime="Docker / DNS",
+        runtime="Docker / DNS", repo="https://github.com/AdguardTeam/AdGuardHome",
     ),
     catalog_tool(
         "logto", "Logto", "Infraestrutura",
         "Plataforma completa de autenticação e autorização para sites, SaaS e APIs.",
-        runtime="Docker / Node / banco de dados",
+        runtime="Docker / Node / banco de dados", repo="https://github.com/logto-io/logto",
     ),
     catalog_tool(
         "floci", "Floci", "Desenvolvimento",
         "Ambiente local que simula serviços da AWS para desenvolvimento e testes.",
-        runtime="Local / cloud emulator",
+        runtime="Docker / cloud emulator", repo="https://github.com/floci-io/floci",
     ),
     catalog_tool(
         "databasement", "Databasement", "Backup e dados",
         "Aplicação self-hosted para backup e restauração de bancos de dados.",
-        runtime="Docker / bancos de dados",
+        runtime="Docker / bancos de dados", repo="https://github.com/David-Crty/databasement",
     ),
     catalog_tool(
         "duplicati", "Duplicati", "Backup e dados",
         "Aplicativo de backup criptografado para nuvem, servidores remotos e armazenamento local.",
-        runtime="Docker / desktop",
+        runtime="Docker / desktop", repo="https://github.com/duplicati/duplicati",
     ),
-    catalog_tool(
+    release_tool(
         "velero", "Velero", "Backup e dados",
         "Plataforma para backup, restauração e migração de clusters Kubernetes.",
-        runtime="Kubernetes / CLI",
-        platform="Kubernetes",
+        runtime="Kubernetes / CLI", repo="https://github.com/velero-io/velero",
+        asset_pattern=r"velero-.*-windows-amd64\.tar\.gz$", executable_glob="velero.exe",
+        archive="tar.gz",
+        notes="Instala o CLI oficial. Para operar, ainda e necessario informar um cluster Kubernetes valido.",
     ),
     catalog_tool(
         "dory", "Dory", "Infraestrutura",
         "Aplicativo para executar e gerenciar containers Linux no macOS.",
         runtime="macOS / containers", platform="Somente macOS",
+        repo="https://github.com/Augani/dory", supported=False,
         notes="Item exibido conforme a lista solicitada, mas não é compatível com este host Windows.",
     ),
     catalog_tool(
         "docker-android", "docker-android", "Desenvolvimento",
         "Ambiente Android completo executado em container para testes e automação.",
-        runtime="Docker / Android emulator",
+        runtime="Docker / Android emulator", repo="https://github.com/budtmo/docker-android",
         hardware="Virtualização e memória adicionais são necessárias para o emulador Android.",
     ),
     catalog_tool(
         "mac-sai", "Mac Sai", "Sistema",
         "Aplicativo macOS para limpeza, otimização e verificação de segurança.",
         runtime="macOS", platform="Somente macOS",
+        repo="https://github.com/iliyami/MacSai", supported=False,
         notes="Item exibido conforme a lista solicitada, mas não é compatível com este host Windows.",
     ),
-    catalog_tool(
+    release_tool(
         "mouzi", "Mouzi", "Sistema",
         "Organizador automático da pasta de downloads para Windows e Linux.",
-        runtime="Python / desktop", repo="https://github.com/hsr88/mouzi",
+        runtime="Desktop portatil", repo="https://github.com/hsr88/mouzi",
+        asset_pattern=r"Mouzi_.*_x64-portable\.exe$", executable_glob="mouzi.exe",
     ),
     catalog_tool(
         "fileexplorer", "FileExplorer", "Sistema",
         "Gerenciador de arquivos desktop construído com Rust e Tauri.",
-        runtime="Rust / Tauri",
+        runtime="Rust / Tauri", repo="https://github.com/conaticus/FileExplorer",
     ),
-    catalog_tool(
+    release_tool(
         "superfile", "Superfile", "Sistema",
         "Gerenciador de arquivos completo executado no terminal.",
-        runtime="Terminal / Go",
+        runtime="Terminal / Go", repo="https://github.com/yorukot/superfile",
+        asset_pattern=r"superfile-windows-.*-amd64\.zip$", executable_glob="spf.exe", archive="zip",
     ),
     catalog_tool(
         "veloxdb", "VeloxDB", "Banco de dados",
         "Cliente desktop para consultar, editar e administrar bancos PostgreSQL.",
-        runtime="Desktop / PostgreSQL",
+        runtime="Desktop / PostgreSQL", repo="https://github.com/veloxbase/veloxdb",
     ),
     catalog_tool(
         "bruno", "Bruno", "Desenvolvimento",
         "Cliente desktop para testar APIs REST e GraphQL, alternativa ao Postman.",
-        runtime="Desktop / Electron",
+        runtime="Desktop / Electron", repo="https://github.com/usebruno/bruno",
     ),
     catalog_tool(
         "voidaccess", "VoidAccess", "Segurança e OSINT",
@@ -429,25 +594,25 @@ CATALOG_ONLY_TOOLS = [
     catalog_tool(
         "maigret", "Maigret", "Segurança e OSINT",
         "Aplicação de investigação de nomes de usuário em diversas plataformas.",
-        runtime="Python / CLI",
+        runtime="Python / CLI", repo="https://github.com/soxoj/maigret",
         notes="Use apenas para pesquisas legítimas e em conformidade com a legislação aplicável.",
     ),
     catalog_tool(
         "scout", "Scout", "Pesquisa e dados",
         "Aplicação de prospecção e enriquecimento de leads a partir de perfis públicos.",
-        runtime="Web / dados",
+        runtime="Python / dados", repo="https://github.com/kiryano/Scout",
         notes="Use apenas dados públicos com base legal e respeite os termos das plataformas consultadas.",
     ),
     catalog_tool(
         "unblink", "Unblink", "Segurança e vídeo",
         "Sistema self-hosted de videomonitoramento com busca e análise por IA.",
-        runtime="Docker / visão / GPU",
+        runtime="Docker / visão / GPU", repo="https://github.com/zapdos-labs/unblink",
         hardware="Armazenamento contínuo e GPU podem ser necessários conforme câmeras e retenção.",
     ),
     catalog_tool(
         "openscholarxiv", "OpenScholarXIV", "Pesquisa acadêmica",
         "Aplicativo para pesquisar, ler, resumir e salvar artigos científicos do arXiv.",
-        runtime="Web / LLM",
+        runtime="Web / LLM", repo="https://github.com/ScholarXIV/OpenScholarXIV",
     ),
     catalog_tool(
         "paperbanana", "PaperBanana", "Pesquisa acadêmica",
@@ -457,61 +622,69 @@ CATALOG_ONLY_TOOLS = [
     catalog_tool(
         "olmocr-2", "olmOCR 2", "OCR e documentos",
         "Aplicação para converter PDFs e documentos escaneados em texto ou Markdown estruturado.",
-        runtime="Python / OCR / GPU",
+        runtime="Python / OCR / GPU", repo="https://github.com/allenai/olmocr",
     ),
     catalog_tool(
         "textsnap", "TextSnap", "OCR e documentos",
         "Aplicação local que transforma imagens, telas e páginas em texto pesquisável.",
-        runtime="Desktop / OCR",
+        runtime="Rust / OCR", repo="https://github.com/TH07008/textsnap",
     ),
     catalog_tool(
         "pixelrag", "PixelRAG", "Conhecimento",
         "Sistema de busca visual e RAG baseado em screenshots renderizados de documentos e páginas.",
-        runtime="Python / visão / RAG",
+        runtime="Python / visão / RAG", repo="https://github.com/StarTrail-org/PixelRAG",
     ),
     catalog_tool(
         "hyperextract", "HyperExtract", "Conhecimento",
         "Aplicação para converter documentos em conhecimento estruturado com auxílio de LLMs.",
-        runtime="Python / LLM",
+        runtime="Python / LLM", repo="https://github.com/yifanfeng97/hyper-extract",
     ),
     catalog_tool(
         "graphify", "Graphify", "Conhecimento",
         "Aplicação que transforma projetos e documentos em grafos de conhecimento navegáveis.",
-        runtime="Grafo / LLM",
+        runtime="Grafo / LLM", repo="https://github.com/Graphify-Labs/graphify",
     ),
-    catalog_tool(
+    release_tool(
         "helixdb", "HelixDB", "Banco de dados",
         "Banco de dados completo para grafos, vetores, documentos e memória de agentes.",
         runtime="Banco vetorial / grafo", repo="https://github.com/helixdb/helix-db",
+        asset_pattern=r"helix-x86_64-pc-windows-msvc\.exe$", executable_glob="helix.exe",
     ),
     catalog_tool(
         "openclaw", "OpenClaw", "Agentes",
         "Assistente pessoal de IA que pode ser executado em dispositivos próprios.",
-        runtime="Node / LLM",
+        runtime="Node / LLM", repo="https://github.com/openclaw/openclaw",
     ),
     catalog_tool(
         "autogpt", "AutoGPT", "Agentes",
         "Plataforma para criação e execução de agentes autônomos.",
-        runtime="Python / Docker / LLM",
+        runtime="Python / Docker / LLM", repo="https://github.com/Significant-Gravitas/AutoGPT",
     ),
     catalog_tool(
         "comfyui", "ComfyUI", "Imagem e design",
         "Aplicação visual baseada em nós para geração e processamento de imagens com IA.",
-        runtime="Python / GPU",
+        runtime="Python / GPU", repo="https://github.com/Comfy-Org/ComfyUI",
         hardware="GPU NVIDIA recomendada; VRAM e armazenamento dependem dos modelos escolhidos.",
     ),
-    catalog_tool(
+    release_tool(
         "kilo-code", "Kilo Code", "Desenvolvimento",
         "Agente de programação open source para VS Code, JetBrains e terminal.",
-        runtime="Extensão / terminal",
-        notes="Integração de editor ou terminal; não é uma aplicação Docker independente no catálogo atual.",
+        runtime="Terminal", repo="https://github.com/Kilo-Org/kilocode",
+        asset_pattern=r"kilo-windows-x64\.zip$", executable_glob="kilo.exe", archive="zip",
+        notes="Instala o CLI oficial portatil. A extensao de editor continua opcional.",
     ),
     catalog_tool(
         "peacock", "Peacock", "Desenvolvimento",
         "Extensão completa do VS Code para identificar projetos por cores diferentes.",
-        runtime="Extensão VS Code",
+        runtime="Extensão VS Code", repo="https://github.com/johnpapa/vscode-peacock",
         notes="Extensão de editor exibida conforme a lista solicitada; não é uma aplicação Docker independente.",
     ),
+]
+
+CATALOG_ONLY_TOOLS = [
+    tool
+    for tool in CATALOG_ONLY_TOOLS
+    if tool["id"] not in {"qwenpaw", "open-notebook", "trek", "reclip"}
 ]
 
 

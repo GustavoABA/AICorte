@@ -8,6 +8,7 @@ sys.path.insert(0, str(PRINCIPAL))
 
 from catalog_data import get_catalog
 from hub_db import HubDB
+from hub_installer import AutoInstaller
 from hub_paths import APP, BASE, github_repo_url, safe_tool_id, within
 
 
@@ -30,6 +31,10 @@ class PathTests(unittest.TestCase):
     def test_path_escape_is_rejected(self):
         with self.assertRaises(ValueError):
             within(APP, BASE.parent / "outside")
+
+    def test_archive_path_escape_is_rejected(self):
+        with self.assertRaises(RuntimeError):
+            AutoInstaller._safe_archive_members(["valid/file.exe", "../escape.exe"])
 
 
 class DatabaseTests(unittest.TestCase):
@@ -72,14 +77,30 @@ class CatalogAndFrontendTests(unittest.TestCase):
     def test_catalog_has_valid_docker_apps(self):
         catalog = get_catalog()
         self.assertEqual(catalog["max_running"], 0)
-        managed = [tool for tool in catalog["tools"] if tool["install_managed"]]
+        managed = [tool for tool in catalog["tools"] if tool["install_kind"] == "docker"]
         self.assertEqual(
             {tool["id"] for tool in managed},
-            {"ollama", "open-llm-vtuber", "n8n", "open-webui", "langflow", "memos", "ntfy"},
+            {
+                "ollama", "open-llm-vtuber", "n8n", "open-webui", "langflow", "memos", "ntfy",
+                "qwenpaw", "open-notebook", "trek", "reclip", "whaticket-community",
+            },
         )
         for tool in managed:
             self.assertTrue(tool["detached"])
             self.assertTrue(Path(tool["docker_compose"]).is_file())
+
+    def test_every_supported_catalog_item_has_a_managed_recipe(self):
+        tools = get_catalog()["tools"]
+        blocked = {tool["id"] for tool in tools if tool["availability"] == "blocked"}
+        self.assertEqual(blocked, {"dory", "mac-sai"})
+        for tool in tools:
+            if tool["id"] in blocked:
+                self.assertFalse(tool["install_managed"])
+                self.assertEqual(tool["install_kind"], "unsupported")
+                continue
+            self.assertTrue(tool["install_managed"])
+            self.assertIn(tool["install_kind"], {"docker", "source", "release"})
+            self.assertTrue(tool["repo"])
 
     def test_requested_explore_catalog_is_present(self):
         tools = get_catalog()["tools"]
@@ -93,11 +114,12 @@ class CatalogAndFrontendTests(unittest.TestCase):
             "FileExplorer", "Superfile", "VeloxDB", "Bruno", "VoidAccess", "Maigret",
             "Scout", "Unblink", "OpenScholarXIV", "PaperBanana", "olmOCR 2", "TextSnap",
             "PixelRAG", "HyperExtract", "Graphify", "HelixDB", "OpenClaw", "AutoGPT",
-            "ComfyUI", "Ollama", "Kilo Code", "Peacock",
+            "ComfyUI", "Ollama", "Kilo Code", "Peacock", "WhaTicket Community",
         }
-        self.assertEqual(len(tools), 59)
+        self.assertEqual(len(tools), 60)
+        self.assertEqual(len({tool["id"] for tool in tools}), len(tools))
         self.assertTrue(requested.issubset({tool["name"] for tool in tools}))
-        self.assertTrue(all(tool["availability"] == "catalog" for tool in tools if not tool["install_managed"]))
+        self.assertTrue(all(tool["availability"] == "blocked" for tool in tools if not tool["install_managed"]))
 
     def test_catalog_paths_stay_in_selected_root(self):
         for tool in get_catalog()["tools"]:
@@ -110,9 +132,10 @@ class CatalogAndFrontendTests(unittest.TestCase):
         script = (principal / "assets" / "app.js").read_text(encoding="utf-8")
         self.assertNotIn('data-view="install"', html)
         self.assertIn('id="view-maintenance"', html)
-        self.assertIn(">Download</button>", script)
+        self.assertIn('tool.install_label || "Download"', script)
         self.assertIn(">Remover</button>", script)
         self.assertIn("window.open(tool.url", script)
+        self.assertNotIn("Receita pendente", script)
 
     def test_compose_storage_uses_selected_root(self):
         principal = Path(__file__).resolve().parents[1]

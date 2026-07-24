@@ -122,23 +122,25 @@ def effective_availability(tool):
 
 def initial_state(tool):
     availability = effective_availability(tool)
-    status = "stopped" if availability == "installed" else availability
+    has_start = bool(tool.get("start"))
+    status = ("stopped" if has_start else "downloaded") if availability == "installed" else availability
     messages = {
         "installed": "Desligado",
         "available": "Disponível para instalação",
         "source": "Código presente; instalação pendente",
         "blocked": "Requer ambiente externo ou receita específica",
         "catalog": "Item informativo",
+        "downloaded": "Código oficial baixado",
     }
     return {
         **tool,
         "availability": availability,
         "status": status,
         "progress": 0,
-        "message": messages.get(availability, availability),
+        "message": messages.get(status, messages.get(availability, availability)),
         "log": str(log_path(tool["id"])),
-        "can_start": availability == "installed" and bool(tool.get("start")),
-        "can_install": availability in {"available", "source"} and bool(tool.get("repo")),
+        "can_start": availability == "installed" and has_start,
+        "can_install": availability in {"available", "source"} and bool(tool.get("install_managed")),
         "can_update": availability == "installed" and bool(tool.get("install_managed")),
         "can_remove": availability == "installed" and bool(tool.get("install_managed")),
         "pid": None,

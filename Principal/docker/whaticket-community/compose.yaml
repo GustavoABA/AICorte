@@ -1,0 +1,84 @@
+services:
+  database:
+    image: mariadb:10.6
+    container_name: aicorte-whaticket-database
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_bin
+    environment:
+      MYSQL_DATABASE: whaticket
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+      TZ: America/Sao_Paulo
+    volumes:
+      - "${AICORTE_ROOT_WSL}/Principal/state/whaticket-community/mysql:/var/lib/mysql"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - aicorte
+
+  backend:
+    build:
+      context: "${AICORTE_ROOT_WSL}/PROJETOS/whaticket-community/backend"
+      dockerfile: "${AICORTE_ROOT_WSL}/Principal/docker/whaticket-community/Dockerfile.backend"
+    image: aicorte/whaticket-backend:local
+    container_name: aicorte-whaticket-backend
+    init: true
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DB_HOST: database
+      DB_DIALECT: mysql
+      DB_USER: root
+      DB_PASS: "${MYSQL_ROOT_PASSWORD}"
+      DB_NAME: whaticket
+      JWT_SECRET: "${JWT_SECRET}"
+      JWT_REFRESH_SECRET: "${JWT_REFRESH_SECRET}"
+      BACKEND_URL: http://127.0.0.1:8080
+      FRONTEND_URL: http://127.0.0.1:3002
+      PROXY_PORT: "8080"
+      CHROME_ARGS: --no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage
+      CHROME_BIN: /usr/bin/chromium
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+    ports:
+      - "127.0.0.1:8080:3000"
+    volumes:
+      - "${AICORTE_ROOT_WSL}/Principal/state/whaticket-community/public:/usr/src/app/public"
+      - "${AICORTE_ROOT_WSL}/Principal/state/whaticket-community/sessions:/usr/src/app/.wwebjs_auth"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - aicorte
+
+  frontend:
+    build:
+      context: "${AICORTE_ROOT_WSL}/PROJETOS/whaticket-community/frontend"
+      dockerfile: "${AICORTE_ROOT_WSL}/Principal/docker/whaticket-community/Dockerfile.frontend"
+    image: aicorte/whaticket-frontend:local
+    container_name: aicorte-whaticket-frontend
+    environment:
+      PUBLIC_HTML: /var/www/public/
+      URL_BACKEND: backend:3000
+      REACT_APP_BACKEND_URL: http://127.0.0.1:8080/
+    ports:
+      - "127.0.0.1:3002:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - aicorte
+
+networks:
+  aicorte:
+    external: true

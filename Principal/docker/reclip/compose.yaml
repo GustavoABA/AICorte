@@ -1,0 +1,17 @@
+services:
+  reclip:
+    build:
+      context: "${AICORTE_ROOT_WSL}/PROJETOS/reclip"
+    image: aicorte/reclip:local
+    container_name: aicorte-reclip
+    ports:
+      - "127.0.0.1:8899:8899"
+    volumes:
+      - "${AICORTE_ROOT_WSL}/Principal/state/reclip/downloads:/app/downloads"
+    restart: unless-stopped
+    networks:
+      - aicorte
+
+networks:
+  aicorte:
+    external: true

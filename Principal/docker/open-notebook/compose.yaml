@@ -1,0 +1,46 @@
+services:
+  surrealdb:
+    image: surrealdb/surrealdb:v2
+    command:
+      - start
+      - --log
+      - info
+      - --user
+      - root
+      - --pass
+      - "${SURREAL_PASSWORD}"
+      - rocksdb:/mydata/mydatabase.db
+    user: root
+    environment:
+      SURREAL_EXPERIMENTAL_GRAPHQL: "true"
+    volumes:
+      - "${AICORTE_ROOT_WSL}/Principal/state/open-notebook/surreal:/mydata"
+    restart: unless-stopped
+    networks:
+      - aicorte
+
+  open-notebook:
+    image: lfnovo/open_notebook:v1-latest
+    container_name: aicorte-open-notebook
+    ports:
+      - "127.0.0.1:8502:8502"
+      - "127.0.0.1:5055:5055"
+    environment:
+      OPEN_NOTEBOOK_ENCRYPTION_KEY: "${OPEN_NOTEBOOK_ENCRYPTION_KEY}"
+      SURREAL_URL: ws://surrealdb:8000/rpc
+      SURREAL_USER: root
+      SURREAL_PASSWORD: "${SURREAL_PASSWORD}"
+      SURREAL_NAMESPACE: open_notebook
+      SURREAL_DATABASE: open_notebook
+      OPEN_NOTEBOOK_WORKER_MAX_TASKS: "1"
+    volumes:
+      - "${AICORTE_ROOT_WSL}/Principal/state/open-notebook/data:/app/data"
+    depends_on:
+      - surrealdb
+    restart: unless-stopped
+    networks:
+      - aicorte
+
+networks:
+  aicorte:
+    external: true

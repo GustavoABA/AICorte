@@ -141,6 +141,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
   font-size: 9px; font-weight: 800; white-space: nowrap;
 }
 .status-pill.running, .status-pill.installed { background: var(--green-dark); color: var(--green); }
+.status-pill.downloaded { background: var(--cyan-dark); color: var(--cyan); }
 .status-pill.starting, .status-pill.installing, .status-pill.queued { background: var(--amber-dark); color: var(--amber); }
 .status-pill.error, .status-pill.failed, .status-pill.blocked { background: var(--red-dark); color: #ff9292; }
 .status-pill.available, .status-pill.source { background: var(--cyan-dark); color: var(--cyan); }

@@ -86,6 +86,7 @@ function statusLabel(tool) {
     stopped: "Desligado",
     error: "Erro",
     installed: "Instalado",
+    downloaded: "Código baixado",
     available: "Instalável",
     source: "Código local",
     blocked: "Bloqueado",
@@ -105,13 +106,17 @@ function toolCard(tool) {
   const progress = ["starting", "stopping", "installing"].includes(tool.status)
     ? `<div class="progress-track"><span data-progress="${Math.max(2, tool.progress || 0)}"></span></div>`
     : "";
-  const mainAction = tool.can_start
+  const mainAction = tool.install_kind === "unsupported"
+    ? `<button class="secondary-button" disabled>${escapeHtml(tool.install_label || "Incompatível")}</button>`
+    : tool.can_start
     ? `<button class="access-button" data-action="access" data-id="${escapeHtml(tool.id)}" ${tool.status !== "running" ? "disabled" : ""}>Acessar</button>`
+    : tool.availability === "installed" && tool.path
+      ? `<button class="secondary-button" data-action="open-folder" data-id="${escapeHtml(tool.id)}">Abrir pasta</button>`
     : tool.can_install
-      ? `<button class="install-button" data-action="install-catalog" data-id="${escapeHtml(tool.id)}">Download</button>`
+      ? `<button class="install-button" data-action="install-catalog" data-id="${escapeHtml(tool.id)}">${escapeHtml(tool.install_label || "Download")}</button>`
       : tool.repo
         ? `<button class="secondary-button" data-action="open-source" data-id="${escapeHtml(tool.id)}">Ver GitHub</button>`
-        : `<button class="secondary-button" disabled>Receita pendente</button>`;
+        : `<button class="secondary-button" disabled>${escapeHtml(tool.install_label || "Indisponivel")}</button>`;
   const removeAction = tool.can_remove
     ? `<button class="danger-button" data-action="remove" data-id="${escapeHtml(tool.id)}">Remover</button>`
     : `<span class="remove-placeholder" aria-hidden="true"></span>`;
@@ -158,7 +163,7 @@ function filteredTools() {
     if (state.category && tool.category !== state.category) return false;
     if (state.status === "installed" && tool.availability !== "installed") return false;
     if (state.status === "available" && !["available", "source"].includes(tool.availability)) return false;
-    if (state.status === "catalog" && tool.availability !== "catalog") return false;
+    if (state.status === "source" && tool.install_kind !== "source") return false;
     if (state.status === "blocked" && tool.availability !== "blocked") return false;
     if (!query) return true;
     return [tool.name, tool.category, tool.description, tool.runtime]
@@ -454,7 +459,12 @@ async function accessTool(toolId) {
 async function installCatalog(toolId) {
   const tool = state.tools.find(item => item.id === toolId);
   if (!tool) return;
-  const confirmed = window.confirm(`Baixar e instalar ${tool.name} com Docker na raiz selecionada?`);
+  const mode = tool.install_kind === "docker"
+    ? "baixar as imagens e preparar os containers Docker"
+    : tool.install_kind === "release"
+      ? "baixar e preparar o pacote portatil oficial"
+      : "baixar e validar o codigo-fonte oficial";
+  const confirmed = window.confirm(`${mode} de ${tool.name} na raiz selecionada?`);
   if (!confirmed) return;
   try {
     const result = await postTool("install", toolId, { trusted: true });
@@ -545,21 +555,27 @@ document.addEventListener("click", async event => {
       $("#detail-log").textContent = "Log vazio.";
     }
     if (action.dataset.action === "update") {
-      if (window.confirm("Atualizar com rollback automático em caso de falha?")) {
+      if (window.confirm("Atualizar esta instalação usando a receita gerenciada?")) {
         await postTool("update", id, { trusted: true });
         $("#tool-dialog").close();
         switchView("maintenance");
       }
     }
     if (action.dataset.action === "repair") {
-      if (window.confirm("Recriar a instalação Docker preservando dados persistentes?")) {
+      if (window.confirm("Reparar esta instalação preservando os dados persistentes?")) {
         await postTool("repair", id, { trusted: true });
         $("#tool-dialog").close();
         switchView("maintenance");
       }
     }
     if (action.dataset.action === "remove") {
-      if (window.confirm("Remover containers e imagens? Modelos, workflows e configurações serão preservados.")) {
+      const tool = state.tools.find(item => item.id === id);
+      const message = tool?.install_kind === "docker"
+        ? "Remover containers, imagens e codigo de build? Modelos, workflows e configurações serão preservados."
+        : tool?.install_kind === "release"
+          ? "Remover o pacote portatil desta ferramenta?"
+          : "Remover o codigo-fonte baixado desta ferramenta?";
+      if (window.confirm(message)) {
         await postTool("remove", id);
         $("#tool-dialog").close();
         switchView("maintenance");
