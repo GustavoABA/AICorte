@@ -4,6 +4,8 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 COPY . .
+RUN sed -i 's/return getConfig("VITE_BACKEND_URL");/return getConfig("VITE_BACKEND_URL") || getConfig("REACT_APP_BACKEND_URL");/' \
+    src/config.js
 RUN npm run build
 
 FROM nginx:1.27-alpine

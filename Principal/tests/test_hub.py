@@ -150,6 +150,17 @@ class CatalogAndFrontendTests(unittest.TestCase):
         self.assertTrue((principal / "native" / "AICorteShell.cs").is_file())
         self.assertTrue((principal / "scripts" / "bootstrap-environment.ps1").is_file())
 
+    def test_whaticket_frontend_uses_runtime_backend_url(self):
+        principal = Path(__file__).resolve().parents[1]
+        dockerfile = (
+            principal / "docker" / "whaticket-community" / "Dockerfile.frontend"
+        ).read_text(encoding="utf-8")
+        compose = (
+            principal / "docker" / "whaticket-community" / "compose.yaml"
+        ).read_text(encoding="utf-8")
+        self.assertIn('getConfig("REACT_APP_BACKEND_URL")', dockerfile)
+        self.assertIn("REACT_APP_BACKEND_URL: http://127.0.0.1:8080/", compose)
+
     def test_native_shell_owns_local_dashboard_and_webview(self):
         principal = Path(__file__).resolve().parents[1]
         shell = (principal / "native" / "AICorteShell.cs").read_text(encoding="utf-8")
