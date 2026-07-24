@@ -187,7 +187,8 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .runtime-state.ok, .check-state.ok { background: var(--green); }
 
 .filters-bar { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.segmented { min-width: 0; display: flex; gap: 2px; overflow-x: auto; padding-bottom: 2px; }
+.filters-bar > select, .filters-bar > .view-switch { flex: 0 0 auto; }
+.segmented { min-width: 0; flex: 1 1 auto; display: flex; gap: 2px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
 .segmented button {
   min-height: 34px; padding: 0 11px; border: 1px solid transparent; border-radius: 5px;
   background: transparent; color: var(--muted); white-space: nowrap; font-size: 11px;
@@ -298,7 +299,7 @@ body.density-comfortable .tool-card { grid-template-rows: 130px auto; }
   .topbar { gap: 10px; }
   .topbar h1 { font-size: 17px; }
   .mobile-only { display: inline-grid; }
-  .topbar-actions { margin-left: auto; }
+  .topbar-actions { min-width: 0; margin-left: auto; }
   .search { width: min(46vw, 260px); }
   .search span { display: none; }
   .summary-grid, .maintenance-summary { grid-template-columns: 1fr 1fr; }
@@ -310,12 +311,15 @@ body.density-comfortable .tool-card { grid-template-rows: 130px auto; }
   .alert-region { right: 15px; top: 80px; }
 }
 
-@media (max-width: 430px) {
-  .search { width: 42vw; }
+@media (max-width: 520px) {
+  #refresh-button { display: none; }
+  .search { width: min(46vw, 180px); }
   .summary-grid, .maintenance-summary { grid-template-columns: 1fr; }
   .summary-item { border-right: 0; border-bottom: 1px solid var(--border); }
   .summary-item:last-child { border-bottom: 0; }
   .tool-grid.list .tool-card { grid-template-columns: 1fr; grid-template-rows: 95px auto; }
-  .filters-bar select { min-width: calc(50% - 5px); }
+  .filters-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+  .filters-bar select { width: 100%; min-width: 0; }
+  .filters-bar .segmented { grid-column: 1 / -1; grid-row: 2; width: 100%; }
   .view-switch { margin-left: 0; }
 }

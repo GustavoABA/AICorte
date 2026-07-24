@@ -109,7 +109,9 @@ function toolCard(tool) {
     ? `<button class="access-button" data-action="access" data-id="${escapeHtml(tool.id)}" ${tool.status !== "running" ? "disabled" : ""}>Acessar</button>`
     : tool.can_install
       ? `<button class="install-button" data-action="install-catalog" data-id="${escapeHtml(tool.id)}">Download</button>`
-      : `<button class="secondary-button" disabled>Indisponível</button>`;
+      : tool.repo
+        ? `<button class="secondary-button" data-action="open-source" data-id="${escapeHtml(tool.id)}">Ver GitHub</button>`
+        : `<button class="secondary-button" disabled>Receita pendente</button>`;
   const removeAction = tool.can_remove
     ? `<button class="danger-button" data-action="remove" data-id="${escapeHtml(tool.id)}">Remover</button>`
     : `<span class="remove-placeholder" aria-hidden="true"></span>`;
@@ -156,6 +158,7 @@ function filteredTools() {
     if (state.category && tool.category !== state.category) return false;
     if (state.status === "installed" && tool.availability !== "installed") return false;
     if (state.status === "available" && !["available", "source"].includes(tool.availability)) return false;
+    if (state.status === "catalog" && tool.availability !== "catalog") return false;
     if (state.status === "blocked" && tool.availability !== "blocked") return false;
     if (!query) return true;
     return [tool.name, tool.category, tool.description, tool.runtime]
@@ -481,6 +484,7 @@ async function showDetails(toolId) {
     </div>
     <div class="detail-actions">
       ${tool.status === "running" ? `<button class="primary-button" data-action="access" data-id="${escapeHtml(tool.id)}">Acessar</button>` : ""}
+      ${tool.repo ? `<button class="secondary-button" data-action="open-source" data-id="${escapeHtml(tool.id)}">Ver GitHub</button>` : ""}
       ${tool.path ? `<button class="secondary-button" data-action="open-folder" data-id="${escapeHtml(tool.id)}">Abrir pasta</button>` : ""}
       ${tool.can_update ? `<button class="secondary-button" data-action="update" data-id="${escapeHtml(tool.id)}">Atualizar</button>` : ""}
       ${tool.can_remove ? `<button class="danger-button" data-action="remove" data-id="${escapeHtml(tool.id)}">Remover</button>` : ""}
@@ -520,6 +524,10 @@ document.addEventListener("click", async event => {
   const id = action.dataset.id;
   try {
     if (action.dataset.action === "access") await accessTool(id);
+    if (action.dataset.action === "open-source") {
+      const tool = state.tools.find(item => item.id === id);
+      if (tool?.repo) window.open(tool.repo, "_blank", "noopener");
+    }
     if (action.dataset.action === "details") await showDetails(id);
     if (action.dataset.action === "install-catalog") await installCatalog(id);
     if (action.dataset.action === "favorite") {

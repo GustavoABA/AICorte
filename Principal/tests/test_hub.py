@@ -72,14 +72,32 @@ class CatalogAndFrontendTests(unittest.TestCase):
     def test_catalog_has_valid_docker_apps(self):
         catalog = get_catalog()
         self.assertEqual(catalog["max_running"], 0)
+        managed = [tool for tool in catalog["tools"] if tool["install_managed"]]
         self.assertEqual(
-            {tool["id"] for tool in catalog["tools"]},
+            {tool["id"] for tool in managed},
             {"ollama", "open-llm-vtuber", "n8n", "open-webui", "langflow", "memos", "ntfy"},
         )
-        for tool in catalog["tools"]:
-            self.assertTrue(tool["install_managed"])
+        for tool in managed:
             self.assertTrue(tool["detached"])
             self.assertTrue(Path(tool["docker_compose"]).is_file())
+
+    def test_requested_explore_catalog_is_present(self):
+        tools = get_catalog()["tools"]
+        requested = {
+            "OpenCut", "OpenMontage", "HyperFrames", "ReClip", "SnapOtter", "CompressO",
+            "Modly", "LibreChat", "Open WebUI", "Open-LLM-VTuber", "Open Higgsfield AI",
+            "PenEcho", "QwenPaw", "Observer AI", "DeerFlow", "Raven", "Agentic Inbox",
+            "Open Notebook", "Yuvomi", "Trek", "Memos", "Seafile", "Instatic",
+            "SimpleX Chat", "ntfy", "AdGuard Home", "Logto", "Floci", "Databasement",
+            "Duplicati", "Velero", "Dory", "docker-android", "Mac Sai", "Mouzi",
+            "FileExplorer", "Superfile", "VeloxDB", "Bruno", "VoidAccess", "Maigret",
+            "Scout", "Unblink", "OpenScholarXIV", "PaperBanana", "olmOCR 2", "TextSnap",
+            "PixelRAG", "HyperExtract", "Graphify", "HelixDB", "OpenClaw", "AutoGPT",
+            "ComfyUI", "Ollama", "Kilo Code", "Peacock",
+        }
+        self.assertEqual(len(tools), 59)
+        self.assertTrue(requested.issubset({tool["name"] for tool in tools}))
+        self.assertTrue(all(tool["availability"] == "catalog" for tool in tools if not tool["install_managed"]))
 
     def test_catalog_paths_stay_in_selected_root(self):
         for tool in get_catalog()["tools"]:

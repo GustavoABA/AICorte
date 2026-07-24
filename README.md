@@ -21,7 +21,7 @@ O assistente instala, quando necessario, Git portatil, CPython 3.11, Docker CLI 
 - **Manutencao**: diagnostico, limpeza, backup, atualizacao, reparo e fila de operacoes.
 - **Configuracoes**: limites opcionais de apps simultaneos, RAM por container e armazenamento. `0` significa ilimitado.
 
-O catalogo inicial contem Ollama, Open-LLM-VTuber, n8n, Open WebUI, Langflow, Memos e ntfy. Somente receitas Docker verificadas recebem o botao de download.
+O catalogo inicial contem 59 itens em Explorar. Ollama, Open-LLM-VTuber, n8n, Open WebUI, Langflow, Memos e ntfy possuem receitas Docker verificadas. Os demais aparecem como itens de catalogo e recebem o link do GitHub quando a origem foi confirmada; somente receitas executaveis recebem o botao de download.
 
 ## Estrutura
 
