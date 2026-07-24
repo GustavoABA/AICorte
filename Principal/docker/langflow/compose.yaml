@@ -1,0 +1,19 @@
+name: aicorte-langflow
+
+services:
+  langflow:
+    image: langflowai/langflow:latest
+    container_name: aicorte-langflow
+    restart: unless-stopped
+    environment:
+      LANGFLOW_AUTO_LOGIN: "true"
+      LANGFLOW_CONFIG_DIR: /app/langflow
+    ports:
+      - "127.0.0.1:7860:7860"
+    volumes:
+      - "${AICORTE_ROOT_WSL}/Principal/state/langflow:/app/langflow"
+
+networks:
+  default:
+    name: aicorte
+    external: true

@@ -1,0 +1,28 @@
+# Local runtimes and downloaded projects
+/app/
+/PROJETOS/
+/AI/
+/run.exe
+
+# Runtime state and generated files
+/Principal/state/
+/Principal/logs/
+/Principal/assets/banners/*.banner
+/Principal/assets/banners/*.json
+**/__pycache__/
+*.pyc
+*.log
+
+# Local installer markers
+/Principal/docker/*/.installed
+/dist/
+
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal

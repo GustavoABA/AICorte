@@ -1,0 +1,16 @@
+name: aicorte-memos
+
+services:
+  memos:
+    image: neosmemo/memos:stable
+    container_name: aicorte-memos
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5230:5230"
+    volumes:
+      - "${AICORTE_ROOT_WSL}/Principal/state/memos:/var/opt/memos"
+
+networks:
+  default:
+    name: aicorte
+    external: true

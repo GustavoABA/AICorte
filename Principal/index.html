@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>AICorte</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegação principal">
+      <div class="brand">
+        <span class="brand-mark">AI</span>
+        <span>
+          <strong>AICorte</strong>
+          <small>Central local</small>
+        </span>
+      </div>
+      <nav id="main-nav" class="main-nav">
+        <button class="nav-item active" data-view="overview"><span class="nav-icon">01</span>Início</button>
+        <button class="nav-item" data-view="apps"><span class="nav-icon">02</span>Explorar</button>
+        <button class="nav-item" data-view="installed"><span class="nav-icon">03</span>Aplicativos <span id="nav-installed" class="nav-count">0</span></button>
+        <button class="nav-item" data-view="maintenance"><span class="nav-icon">04</span>Manutenção <span id="nav-operations" class="nav-count">0</span></button>
+        <button class="nav-item" data-view="settings"><span class="nav-icon">05</span>Configurações</button>
+      </nav>
+      <div class="sidebar-footer">
+        <span class="connection-dot" id="connection-dot"></span>
+        <span id="connection-label">Conectando</span>
+        <small id="root-path">Carregando raiz...</small>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button id="menu-toggle" class="icon-button mobile-only" title="Abrir menu" aria-label="Abrir menu">=</button>
+        <div>
+          <p class="eyebrow" id="view-eyebrow">CENTRAL LOCAL</p>
+          <h1 id="view-title">Início</h1>
+        </div>
+        <div class="topbar-actions">
+          <label class="search">
+            <span>Buscar</span>
+            <input id="global-search" type="search" placeholder="Nome, categoria ou runtime" autocomplete="off">
+          </label>
+          <button id="refresh-button" class="icon-button" title="Atualizar dados" aria-label="Atualizar dados">R</button>
+        </div>
+      </header>
+
+      <div id="alert-region" class="alert-region" aria-live="polite"></div>
+
+      <section id="view-overview" class="view active">
+        <div id="summary-grid" class="summary-grid"></div>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">ACESSO RÁPIDO</p>
+            <h2>Favoritos e recentes</h2>
+          </div>
+          <button class="text-button" data-go="apps">Ver todos</button>
+        </div>
+        <div id="quick-tools" class="tool-grid compact"></div>
+        <div class="two-column">
+          <section class="plain-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">ATIVIDADE</p>
+                <h2>Operações recentes</h2>
+              </div>
+            </div>
+            <div id="recent-operations" class="activity-list"></div>
+          </section>
+          <section class="plain-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">AMBIENTE</p>
+                <h2>Runtimes portáteis</h2>
+              </div>
+            </div>
+            <div id="runtime-list" class="runtime-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="view-apps" class="view">
+        <div class="filters-bar">
+          <div id="category-filters" class="segmented" role="group" aria-label="Categorias"></div>
+          <select id="status-filter" aria-label="Filtrar por estado">
+            <option value="">Todos os estados</option>
+            <option value="installed">Instalados</option>
+            <option value="available">Instaláveis</option>
+            <option value="blocked">Bloqueados</option>
+          </select>
+          <select id="sort-filter" aria-label="Ordenar aplicativos">
+            <option value="name">Nome</option>
+            <option value="recent">Recentes</option>
+            <option value="status">Estado</option>
+          </select>
+          <div class="view-switch" role="group" aria-label="Modo de exibição">
+            <button class="icon-button active" data-layout="grid" title="Grade" aria-label="Grade">G</button>
+            <button class="icon-button" data-layout="list" title="Lista" aria-label="Lista">L</button>
+          </div>
+        </div>
+        <div class="result-line"><strong id="tool-result-count">0</strong><span>aplicativos</span></div>
+        <div id="all-tools" class="tool-grid"></div>
+      </section>
+
+      <section id="view-installed" class="view">
+        <div class="section-heading installed-heading">
+          <div>
+            <p class="eyebrow">AMBIENTE LOCAL</p>
+            <h2>Instalados nesta raiz</h2>
+          </div>
+          <span id="installed-running-label" class="status-pill neutral">0 em execução</span>
+        </div>
+        <div id="installed-tools" class="tool-grid installed-grid"></div>
+        <div id="installed-empty" class="empty-state" hidden>
+          <strong>Nenhum aplicativo instalado</strong>
+          <span>Use Explorar para baixar a primeira ferramenta.</span>
+        </div>
+      </section>
+
+      <section id="view-running" class="view">
+        <div id="running-tools" class="tool-grid"></div>
+        <div id="running-empty" class="empty-state" hidden>
+          <strong>Nenhum aplicativo em execução</strong>
+          <span>O limite simultâneo é de três processos.</span>
+        </div>
+      </section>
+
+      <section id="view-install" class="view">
+        <div class="installer-layout">
+          <form id="install-form" class="form-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">AUTOINSTALAÇÃO</p>
+                <h2>Novo repositório</h2>
+              </div>
+              <span class="status-pill neutral">GitHub</span>
+            </div>
+            <div class="form-grid">
+              <label class="field full">
+                <span>Repositório</span>
+                <input name="repo" type="url" required placeholder="https://github.com/dono/projeto">
+              </label>
+              <label class="field">
+                <span>Nome</span>
+                <input name="name" required maxlength="80" placeholder="Nome do aplicativo">
+              </label>
+              <label class="field">
+                <span>Identificador</span>
+                <input name="id" required pattern="[a-z0-9][a-z0-9-]{1,62}" placeholder="meu-aplicativo">
+              </label>
+              <label class="field">
+                <span>Categoria</span>
+                <input name="category" value="Instalados" maxlength="60">
+              </label>
+              <label class="field">
+                <span>Porta preferida</span>
+                <input name="port" type="number" min="1024" max="65535" placeholder="Automática">
+              </label>
+              <label class="field full">
+                <span>Descrição</span>
+                <textarea name="description" rows="3" maxlength="500" placeholder="Função principal do aplicativo"></textarea>
+              </label>
+              <label class="field full">
+                <span>Comando inicial opcional</span>
+                <input name="start_command" placeholder="Detecção automática">
+              </label>
+              <label class="check-field full">
+                <input name="trusted" type="checkbox" required>
+                <span>Autorizo a execução dos scripts de instalação deste repositório.</span>
+              </label>
+            </div>
+            <div class="form-actions">
+              <button id="analyze-install" type="button" class="secondary-button">Analisar</button>
+              <button type="submit" class="primary-button">Instalar localmente</button>
+            </div>
+          </form>
+          <aside class="install-plan">
+            <p class="eyebrow">PLANO DE EXECUÇÃO</p>
+            <h2>Instalação transacional</h2>
+            <ol id="install-plan-list">
+              <li>Clone isolado em staging</li>
+              <li>Detecção de runtime e lockfile</li>
+              <li>Dependências dentro de app</li>
+              <li>Build e validação</li>
+              <li>Promoção ou rollback</li>
+            </ol>
+            <div id="install-analysis" class="analysis-result"></div>
+            <div class="storage-note">
+              <span>Espaço livre</span>
+              <strong id="install-free-space">--</strong>
+            </div>
+          </aside>
+        </div>
+        <div class="section-heading catalog-heading">
+          <div>
+            <p class="eyebrow">CATÁLOGO</p>
+            <h2>Pendentes de preparação</h2>
+          </div>
+        </div>
+        <div id="installable-tools" class="tool-grid compact"></div>
+      </section>
+
+      <section id="view-maintenance" class="view">
+        <div class="summary-grid maintenance-summary" id="maintenance-summary"></div>
+        <div class="two-column maintenance-grid">
+          <section class="plain-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">DIAGNÓSTICO</p>
+                <h2>Integridade local</h2>
+              </div>
+              <button id="run-diagnostics" class="secondary-button">Verificar</button>
+            </div>
+            <div id="diagnostic-list" class="check-list"></div>
+          </section>
+          <section class="plain-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">LIMPEZA SEGURA</p>
+                <h2>Arquivos recuperáveis</h2>
+              </div>
+            </div>
+            <div id="cleanup-preview" class="cleanup-preview"></div>
+            <div class="check-stack">
+              <label class="check-field"><input id="cleanup-files" type="checkbox" checked><span>Temporários e logs antigos</span></label>
+            </div>
+            <button id="run-cleanup" class="danger-button">Executar limpeza</button>
+          </section>
+        </div>
+        <section class="plain-section backup-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">BACKUP</p>
+              <h2>Estado e memória de prompts</h2>
+            </div>
+            <button id="create-backup" class="primary-button">Criar backup</button>
+          </div>
+          <div id="backup-list" class="backup-list"></div>
+        </section>
+        <section class="plain-section backup-section">
+          <div class="section-heading">
+            <div><p class="eyebrow">APLICATIVOS</p><h2>Atualizar e reparar</h2></div>
+          </div>
+          <div id="maintenance-apps" class="maintenance-app-list"></div>
+        </section>
+        <section class="plain-section backup-section">
+          <div class="section-heading">
+            <div><p class="eyebrow">FILA PERSISTENTE</p><h2>Operações</h2></div>
+            <button id="refresh-operations" class="secondary-button">Atualizar</button>
+          </div>
+          <div id="operations-table" class="data-table"></div>
+        </section>
+      </section>
+
+      <section id="view-settings" class="view">
+        <form id="settings-form" class="settings-list">
+          <div class="setting-row">
+            <div><strong>Atualização automática</strong><span>Sincronização do painel em segundo plano</span></div>
+            <label class="switch"><input name="auto_refresh" type="checkbox" checked><span></span></label>
+          </div>
+          <div class="setting-row">
+            <div><strong>Memória de prompts</strong><span>Persistência local sem campos secretos</span></div>
+            <label class="switch"><input name="prompt_memory" type="checkbox" checked><span></span></label>
+          </div>
+          <div class="setting-row">
+            <div><strong>Abrir em janela separada</strong><span>Mantém a central aberta e usa outra janela nativa WebView2</span></div>
+            <label class="switch"><input name="open_in_new_tab" type="checkbox" checked><span></span></label>
+          </div>
+          <div class="setting-row">
+            <div><strong>Modo econômico</strong><span>Reduz atualizações da central quando estiver em segundo plano</span></div>
+            <label class="switch"><input name="low_power_browser" type="checkbox" checked><span></span></label>
+          </div>
+          <div class="setting-row">
+            <div><strong>Aplicativos simultâneos</strong><span>Use 0 para não impor limite</span></div>
+            <input class="limit-input" name="max_running_apps" type="number" min="0" max="100" value="0">
+          </div>
+          <div class="setting-row">
+            <div><strong>RAM por contêiner</strong><span>Limite em GB aplicado pelo Docker; 0 mantém ilimitado</span></div>
+            <input class="limit-input" name="max_ram_gb" type="number" min="0" max="1024" step="0.5" value="0">
+          </div>
+          <div class="setting-row">
+            <div><strong>Armazenamento do AICorte</strong><span>Bloqueia novas instalações ao atingir o valor em GB; 0 mantém ilimitado</span></div>
+            <input class="limit-input" name="max_storage_gb" type="number" min="0" max="100000" step="1" value="0">
+          </div>
+          <div class="setting-row">
+            <div><strong>Densidade</strong><span>Quantidade de informações por linha</span></div>
+            <select name="density"><option value="compact">Compacta</option><option value="comfortable">Confortável</option></select>
+          </div>
+          <div class="setting-row">
+            <div><strong>Layout de aplicativos</strong><span>Exibição inicial do catálogo</span></div>
+            <select name="view"><option value="grid">Grade</option><option value="list">Lista</option></select>
+          </div>
+          <div class="settings-actions"><button type="submit" class="primary-button">Salvar configurações</button></div>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="tool-dialog" class="tool-dialog">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow" id="dialog-category"></p>
+        <h2 id="dialog-title"></h2>
+      </div>
+      <button id="close-dialog" class="icon-button" aria-label="Fechar" title="Fechar">X</button>
+    </div>
+    <div id="dialog-content" class="dialog-content"></div>
+  </dialog>
+
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>

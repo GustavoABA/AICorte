@@ -1,0 +1,26 @@
+name: aicorte-open-llm-vtuber
+
+services:
+  open-llm-vtuber:
+    build:
+      context: ../../../PROJETOS/Open-LLM-VTuber
+      dockerfile: dockerfile
+    image: aicorte/open-llm-vtuber:local
+    container_name: aicorte-open-llm-vtuber
+    restart: unless-stopped
+    gpus: all
+    environment:
+      CONFIG_FILE: /app/conf/conf.yaml
+    ports:
+      - "127.0.0.1:12393:12393"
+    volumes:
+      - "${AICORTE_ROOT_WSL}/Principal/state/open-llm-vtuber/config:/app/conf"
+      - "${AICORTE_ROOT_WSL}/Principal/state/open-llm-vtuber/chat_history:/app/chat_history"
+      - "${AICORTE_ROOT_WSL}/Principal/state/open-llm-vtuber/logs:/app/logs"
+      - "${AICORTE_ROOT_WSL}/AI/Open-LLM-VTuber:/app/models"
+    shm_size: "2gb"
+
+networks:
+  default:
+    name: aicorte
+    external: true

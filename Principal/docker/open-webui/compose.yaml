@@ -1,0 +1,22 @@
+name: aicorte-open-webui
+
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: aicorte-open-webui
+    restart: unless-stopped
+    environment:
+      OLLAMA_BASE_URL: http://aicorte-ollama:11434
+      WEBUI_AUTH: "true"
+      ENABLE_SIGNUP: "true"
+    ports:
+      - "127.0.0.1:3000:8080"
+    volumes:
+      - "${AICORTE_ROOT_WSL}/Principal/state/open-webui:/app/backend/data"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  default:
+    name: aicorte
+    external: true

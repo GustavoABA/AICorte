@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Configurar AICorte</title>
+  <style>
+    :root{color-scheme:dark;font-family:"Segoe UI",Arial,sans-serif;--bg:#0b0d0e;--panel:#121619;--line:#293136;--text:#f4f6f7;--muted:#98a4ab;--green:#37d68a;--cyan:#4cc9f0;--red:#ff6262}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);min-height:100vh}button,input{font:inherit;letter-spacing:0}.shell{display:grid;grid-template-columns:minmax(260px,34%) 1fr;min-height:100vh}.intro{padding:clamp(32px,6vw,76px);display:flex;flex-direction:column;justify-content:space-between;background:#0e1112;border-right:1px solid var(--line)}.mark{width:44px;height:44px;display:grid;place-items:center;border-radius:7px;background:var(--green);color:#07120d;font-weight:900}.intro h1{font-size:clamp(34px,5vw,64px);line-height:1;margin:26px 0 16px}.intro p{color:var(--muted);line-height:1.65;max-width:430px}.intro small{color:#657179}.content{padding:clamp(30px,5vw,70px);overflow:auto}.step{max-width:900px;margin:auto}.eyebrow{color:var(--cyan);font-size:11px;font-weight:800;text-transform:uppercase}.step h2{font-size:26px;margin:8px 0}.lead{color:var(--muted);margin:0 0 26px}.folder{display:grid;grid-template-columns:1fr auto;gap:8px}.folder input{min-width:0;height:44px;padding:0 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--text)}button{height:44px;padding:0 16px;border-radius:6px;border:1px solid #3c4850;background:#20272b;color:var(--text);font-weight:700;cursor:pointer}button.primary{border-color:#25805a;background:#236f4f}button:disabled{opacity:.45;cursor:not-allowed}.deps{margin-top:26px;border-top:1px solid var(--line)}.dep{display:grid;grid-template-columns:12px 1fr auto;gap:12px;align-items:center;padding:14px 2px;border-bottom:1px solid var(--line)}.dot{width:9px;height:9px;border-radius:50%;background:#59646a}.dep.ok .dot{background:var(--green)}.dep.bad .dot{background:var(--red)}.dep strong,.dep span{display:block}.dep span{margin-top:3px;color:var(--muted);font-size:11px}.dep em{font-style:normal;font-size:11px;color:var(--muted)}.progress{margin:24px 0 0}.track{height:6px;background:#252c30;overflow:hidden}.track span{display:block;width:0;height:100%;background:var(--green);transition:width .2s}.progress p{min-height:20px;color:var(--muted);font-size:12px}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:24px}.log{display:none;max-height:150px;overflow:auto;padding:12px;background:#080a0b;border:1px solid var(--line);white-space:pre-wrap;font:10px/1.5 Consolas,monospace;color:#aeb8bd}.log.visible{display:block}.error{color:var(--red)!important}@media(max-width:760px){.shell{grid-template-columns:1fr}.intro{min-height:230px}.content{padding:28px 20px}.folder{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="intro">
+      <div><div class="mark">AI</div><h1>AICorte</h1><p>Central local para instalar, executar e manter ferramentas de IA em contêineres, usando a pasta que você escolher.</p></div>
+      <small>Os dados, modelos, projetos e runtimes ficam juntos na raiz selecionada.</small>
+    </section>
+    <section class="content">
+      <div class="step">
+        <p class="eyebrow">Configuração inicial</p>
+        <h2>Prepare o ambiente local</h2>
+        <p class="lead">Escolha a pasta. O AICorte verificará Python, Git, o motor Chromium WebView2, Docker e Docker Compose antes de abrir o painel.</p>
+        <div class="folder"><input id="root" readonly placeholder="Selecione a pasta raiz"><button id="pick">Escolher pasta</button></div>
+        <div id="deps" class="deps"></div>
+        <div class="progress"><div class="track"><span id="bar"></span></div><p id="message">Aguardando uma pasta.</p></div>
+        <pre id="log" class="log"></pre>
+        <div class="actions"><button id="check">Verificar</button><button id="install" class="primary" disabled>Baixar e configurar</button><button id="open" class="primary" hidden>Abrir AICorte</button></div>
+      </div>
+    </section>
+  </main>
+  <script>
+    const $=s=>document.querySelector(s),send=(action,data={})=>chrome.webview.postMessage({action,...data});let root="",busy=false;
+    $("#pick").onclick=()=>send("pick-folder");$("#check").onclick=()=>send("check");$("#install").onclick=()=>{busy=true;toggle();send("install")};$("#open").onclick=()=>send("open-dashboard");
+    function toggle(){$("#pick").disabled=busy;$("#check").disabled=busy;$("#install").disabled=busy||!root}
+    function render(items){$("#deps").innerHTML=items.map(d=>`<div class="dep ${d.ok?'ok':'bad'}"><i class="dot"></i><div><strong>${escape(d.name)}</strong><span>${escape(d.detail||'')}</span></div><em>${d.ok?'Pronto':'Pendente'}</em></div>`).join('')}
+    function escape(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+    chrome.webview.addEventListener('message',e=>{const d=e.data;if(d.event==='folder'){root=d.root;$("#root").value=root;toggle()}if(d.event==='environment'){root=d.root||root;$("#root").value=root;render(d.dependencies||[]);$("#message").textContent=d.ready?'Ambiente pronto.':root?'Dependências pendentes; clique em Baixar e configurar.':'Aguardando uma pasta.';$("#install").disabled=busy||!root;if(d.ready)$("#open").hidden=false}if(d.event==='install-started'){busy=true;toggle();$("#log").classList.add('visible');$("#message").textContent='Preparando ambiente...'}if(d.event==='progress'){$("#bar").style.width=Math.max(0,Math.min(100,d.progress||0))+'%';$("#message").textContent=d.message;$("#log").textContent+=`[${d.id}] ${d.message}\n`;$("#log").scrollTop=$("#log").scrollHeight}if(d.event==='log'){$("#log").classList.add('visible');$("#log").textContent+=d.message+'\n'}if(d.event==='install-complete'){busy=false;$("#bar").style.width='100%';$("#message").textContent='Ambiente configurado.';$("#open").hidden=false;toggle()}if(d.event==='error'){busy=false;toggle();$("#message").classList.add('error');$("#message").textContent=d.message}});send('check');
+  </script>
+</body>
+</html>

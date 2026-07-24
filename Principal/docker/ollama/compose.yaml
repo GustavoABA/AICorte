@@ -1,0 +1,41 @@
+name: aicorte-ollama
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: aicorte-ollama
+    restart: unless-stopped
+    gpus: all
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - "${AICORTE_ROOT_WSL}/AI/Ollama:/root/.ollama/models"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  panel:
+    build:
+      context: ../../services/ollama-panel
+    image: aicorte/ollama-panel:local
+    container_name: aicorte-ollama-panel
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      AICORTE_DB_PATH: /data/ollama-panel.sqlite3
+      AICORTE_HOST: 0.0.0.0
+      AICORTE_PORT: "11435"
+    ports:
+      - "127.0.0.1:11435:11435"
+    volumes:
+      - "${AICORTE_ROOT_WSL}/Principal/state/ollama-panel:/data"
+
+networks:
+  default:
+    name: aicorte
+    external: true

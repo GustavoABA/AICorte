@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ollama Local</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><strong>Ollama Local</strong><span id="version">conectando...</span></div>
+    <div class="status"><i id="statusDot"></i><span id="statusText">Verificando</span></div>
+  </header>
+
+  <nav class="tabs" aria-label="Areas do painel">
+    <button class="tab active" data-tab="chat">Chat</button>
+    <button class="tab" data-tab="models">Modelos</button>
+    <button class="tab" data-tab="console">Console</button>
+  </nav>
+
+  <main>
+    <section id="chat" class="view active">
+      <div class="chat-toolbar">
+        <label>Modelo<select id="chatModel"></select></label>
+        <label>Temperatura<input id="temperature" type="number" min="0" max="2" step="0.1" value="0.7"></label>
+        <button id="clearChat" class="secondary">Limpar conversa</button>
+      </div>
+      <div id="messages" class="messages" aria-live="polite"></div>
+      <form id="chatForm" class="composer">
+        <textarea id="prompt" rows="3" placeholder="Escreva uma mensagem..." required></textarea>
+        <button class="primary" type="submit">Enviar</button>
+      </form>
+    </section>
+
+    <section id="models" class="view">
+      <div class="model-actions">
+        <form id="pullForm">
+          <label>Baixar modelo<input id="pullModel" placeholder="ex.: qwen3:8b" required></label>
+          <button class="primary" type="submit">Baixar</button>
+        </form>
+        <button id="refreshModels" class="secondary">Atualizar lista</button>
+      </div>
+      <div id="pullProgress" class="progress-box" hidden>
+        <div><span id="pullStatus">Preparando</span><strong id="pullPercent">0%</strong></div>
+        <progress id="pullBar" max="100" value="0"></progress>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Modelo</th><th>Tamanho</th><th>Familia</th><th>Estado</th><th>Acoes</th></tr></thead>
+          <tbody id="modelRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="console" class="view">
+      <div id="terminal" class="terminal" aria-live="polite"><div>Digite <b>help</b> para listar os comandos permitidos.</div></div>
+      <form id="commandForm" class="command-line">
+        <span>ollama&gt;</span><input id="command" autocomplete="off" spellcheck="false" placeholder="list">
+        <button class="primary" type="submit">Executar</button>
+      </form>
+    </section>
+  </main>
+
+  <div id="toast" role="status"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

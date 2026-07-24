@@ -1,0 +1,25 @@
+name: aicorte-ntfy
+
+services:
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: aicorte-ntfy
+    restart: unless-stopped
+    command: ["serve", "--cache-file", "/var/cache/ntfy/cache.db"]
+    environment:
+      TZ: America/Sao_Paulo
+    ports:
+      - "127.0.0.1:8085:80"
+    volumes:
+      - "${AICORTE_ROOT_WSL}/Principal/state/ntfy:/var/cache/ntfy"
+    init: true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 http://localhost:80/v1/health -O - | grep -q true"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+networks:
+  default:
+    name: aicorte
+    external: true
